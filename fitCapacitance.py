@@ -176,7 +176,7 @@ plt.legend(loc = "upper right")
 
 
 #%% CREATE DATA FOR FIGURE 5
-files = ["Mystery1.dat","Mystery_Device_2.dat","Mystery_Device_3.dat"]
+files = ["Mystery1.dat","MysteryDevice2.dat","MysteryDevice3.dat"]
 names = ["Mystery1Silvaco","Mystery2Silvaco","Mystery3Silvaco"]
 epsAL = 15.3
 epsBL = 12.75

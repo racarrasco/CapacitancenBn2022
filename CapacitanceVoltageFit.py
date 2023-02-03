@@ -31,7 +31,25 @@ def chargeAbs(const: inputs,temp, doping, phi, epsin = 15.3):
     charge = -np.sign(phi) * \
          np.sqrt(2*const.kb*temp*dope*eps*(-1-const.e*phi/const.kb/temp + np.exp(const.e*phi/const.kb/temp)))
     return charge
+    
 
+def builtInVoltageAbsorberBarrier(const:inputs, temp, barrierDoping, absorberDoping, \
+                                  barrierAbsorbervbo, absorberGap,\
+                                  absorberme = 0.026, barriermv = 0.3):
+    """Convert to units of m-3"""
+    nDAL = absorberDoping * 1e15  * 100 ** 3 
+    nABL = barrierDoping * 1e15 * 100 ** 3
+
+    """Calculate the effective density of states in the conduction and valence band in units of
+    m-3"""
+    nCAbsorber = 1/4*(2*absorberme*inputs.m0*inputs.kb*temp/(np.pi*inputs.hbar))**(3/2)
+    
+    nVBarrier = 1/4*(2*barriermv*inputs.m0*inputs.kb*temp/(np.pi*inputs.hbar))**(3/2)
+    
+    
+    vBi = barrierAbsorbervbo/1000 + inputs.kb*temp/inputs.e*np.log(nCAbsorber*nVBarrier/(nDAL*nABL))
+    
+    return vBi
     
 
 
@@ -575,9 +593,10 @@ def fitCapacitance_nBn(const:inputs, xdata, ydata, temp, dopeContact, dopeBarrie
     
     """Print the function that will be fit"""
     # print(stringLambda + stringFunction)
- 
+    
+    # print(parameterBounds)
     """The model that will be fed into the curve fit"""
-    model = eval(stringLambda + stringFunction,dictionaryVariables)
+    model = eval(stringLambda + stringFunction, dictionaryVariables)
     bestFit, covariance = optimize.curve_fit(model, xdata, ydata, initialGuess, bounds = parameterBounds)
     
     """SetTheOutputs"""
