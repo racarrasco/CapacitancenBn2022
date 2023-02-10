@@ -105,7 +105,10 @@ def centralDifference(y,x):
             #do a backward difference for last index
             dydx[index] = (yval - y[index - 1])/(x[index] - x[index - 1])
         else:
-                dydx[index] = (y[index + 1] -y[index - 1])/(x[index + 1] - x[index - 1])
+            forward = (y[index + 1] - yval)/(x[index + 1] - x[index])
+            backward = (yval - y[index-1])/(x[index] - x[index-1])
+            dydx[index] = 0.5*(forward + backward)
+            
     return dydx
 
 
