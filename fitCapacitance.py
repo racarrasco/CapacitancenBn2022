@@ -175,51 +175,6 @@ plt.plot(xin, polysubtration(xin), "--", color ="gray", label = "N$_D$ = %0.2f x
 plt.legend(loc = "upper right")
 
 
-#%% CREATE DATA FOR FIGURE 5
-files = ["Mystery1.dat","MysteryDevice2.dat","MysteryDevice3.dat"]
-names = ["Mystery1Silvaco","Mystery2Silvaco","Mystery3Silvaco"]
-epsAL = 15.3
-epsBL = 12.75
-
-
-# samples = [cvf.SampleCV(epsAL, epsBL, 200, name = singleName) for singleName in names]
-headernamesSilvaco = ["Voltage", "Capacitance"]
-skipLines = 4
-
-"Read all of the files"
-dataframes = [pd.read_table(files[index],sep = ' ', names = headernamesSilvaco, skiprows = skipLines, index_col = False) for index in range(len(files))]
-voltagesArrays = [np.array(dataframe["Voltage"]) for dataframe in dataframes]
-capacitanceArrays = [np.array(dataframe["Capacitance"])*1e6**2*1e9/100**2 for dataframe in dataframes]
-#%% Show the loaded files
-fig, axes = plt.subplots(3,1)
-
-
-[axes[ind].plot(voltagesArrays[ind], capacitanceArrays[ind],'.', label = names[ind]) for ind in range(len(axes))]
-[axes[ind].legend(loc = "upper left") for ind in range(len(axes))]
-
-
-
-#%% Now fit
-
-result = [cvf.fitCapacitance_nBn(constants, voltagesArrays[ind], capacitanceArrays[ind], 130, 1, 1, 200, 4,\
-          epsBarr = epsBL, epsAbs = epsAL, epsCon = epsAL, fitParasitic = False) for ind in range(len(axes))]
-
-
-
-#%% Simulate the capacitance
-bestFitCapacitancesAndDrops = [cvf.capacitance_nBnReturnPotential(constants,voltagesArrays[ind],\
-                               130, *result[ind][2]) for ind in range(len(axes))]
-#%% Show the fits
-[axes[ind].plot(voltagesArrays[ind], bestFitCapacitancesAndDrops[ind][0], label = "fit") for ind in range(len(axes))]
-
-#Show in the plot title the best fit results
-[axes[ind].set_title(r"$N_{DC}$ = %0.2f $\times 10^{15} cm^{-3}$; $N_{DB}$ = %0.2f $\times 10^{15} cm^{-3}$; t$_{BL}$ = %0.0f nm; N$_{DAL}$ = %0.2f $\times 10^{15} cm^{-3}$"\
-%(result[ind][0][0]*100,result[ind][0][1],result[ind][0][2],result[ind][0][3])) for ind in range(len(axes))]
-
-
-[axes[ind].legend(loc = "upper left") for ind in range(len(axes))]
-
-
 
 
 #%% CREATE DATA FOR FIGURE 6
