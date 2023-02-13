@@ -6,6 +6,7 @@ Created on Wed Dec  1 10:09:52 2021
 """
 import numpy as np #numerical py, so exponents, sine, cosine etc. functions
 from scipy import optimize #fitting and root finding function
+from scipy.interpolate import CubicSpline
 # import matplotlib.pyplot as plt #plotting library
 
 class inputs:
@@ -105,10 +106,29 @@ def centralDifference(y,x):
             #do a backward difference for last index
             dydx[index] = (yval - y[index - 1])/(x[index] - x[index - 1])
         else:
+            # calculate the forward difference and backward difference formulas
+            # and then use the average as the derivative
             forward = (y[index + 1] - yval)/(x[index + 1] - x[index])
             backward = (yval - y[index-1])/(x[index] - x[index-1])
             dydx[index] = 0.5*(forward + backward)
             
+    return dydx
+
+def differentiate(y,x):
+    """Calculate the derivative data by using a cubic spline interpolation and 
+    calculating the derivative ADDED DURING REVIEWER REVISIONS,
+    02-13-2023, WILL CHANGE THE EXTRACTED CONTACT DOPING IN TABLE 3"""
+    yToDiff = np.nan*np.ones(len(x))
+    
+    xToDiff = np.nan*np.ones(len(x))
+    if (x[1] < x[0]) :
+        xToDiff = np.flip(x)
+        yToDiff = np.flip(y)
+    else:
+        xToDiff = x
+        yToDiff = y
+    cs = CubicSpline(xToDiff, yToDiff)
+    dydx = cs(x,1)
     return dydx
 
 
@@ -229,8 +249,18 @@ def determineCapacitance_nBn(const: inputs, vA, temp, dopeContact,  dopeBarrier,
     # Determine the charge for the absorber at each applied voltage
     chargeAbs = charge(nDAL,val, epsAL)
     
-    """Now determine the capacitance"""
-    capacitance = -centralDifference(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
+    """Now determine the capacitance.
+    TO GET RESULTS SIMILAR TO THE MANUSCRIPT USE 
+    THIS METHOD UNCOMMENT THIS LINE"""
+    # capacitance = -centralDifference(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
+    
+    """ 02-13-2022 UPDATE: calculate the derivative by cubic spline interpolation and then
+    differentiate rather than calculating the numerical derivative by finite differences.
+    TO GET RESULTS SIMILAR TO THE MANUSCRIPT COMMENT THIS LINE AND UNCOMMENT THE PREVIOUS LINE"""
+    capacitance = -differentiate(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
+    
+    
+    
     capnFCm2 = capacitance*1e9/100**2
     return capnFCm2
 
@@ -357,8 +387,15 @@ def capacitance_nBnReturnPotential(const:inputs,vA, temp, dopeContact,  dopeBarr
     phiBarrier = -thic**2 * const.e *nDBL / (2*epsBL) - thic * epsAL/epsBL*eFieldAbs(nDAL,val, epsAL)
     phiContact = vA + vbi - phiBarrier - val
     
-    #Differentiate the charge in the absorber and add any parasitic capacitance 
-    capacitance = -centralDifference(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
+    """Now determine the capacitance.
+    TO GET RESULTS SIMILAR TO THE MANUSCRIPT USE 
+    THIS METHOD UNCOMMENT THIS LINE"""
+    # capacitance = -centralDifference(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
+    
+    """ 02-13-2022 UPDATE: calculate the derivative by cubic spline interpolation and then
+    differentiate rather than calculating the numerical derivative by finite differences.
+    TO GET RESULTS SIMILAR TO THE MANUSCRIPT COMMENT THIS LINE AND UNCOMMENT THE PREVIOUS LINE"""
+    capacitance = -differentiate(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
     
     #Put the parasitic capacitance in units of nanofarads/cm^2
     capnFCm2 = capacitance*1e9/100**2
