@@ -146,9 +146,11 @@ def determineCapacitance_nBn(const: inputs, vA, temp, dopeContact,  dopeBarrier,
     Understanding the C-V characteristics of InAsSb-based nBn infrared detectors with n and p-type barrier layers through
     numerical modeling.  https://doi.org/10.1109/JEDS.2019.2913157
 
-    Future paper title and authors: 
-    Capacitance-voltage modeling of mid-wavelength barrier infrared detectors
-    R. A. Carrasco, A. Newell, Z. M. Alsaad, J. V. Logan, G. Ariyawansa, C. P. Morath, and P. T. Webster
+    Paper title and authors: 
+    R. A. Carrasco, A. T. Newell, Z. M. Alsaad, J. V. Logan, J. M. Duran,
+    G. Ariyawansa, B. Pinkie, C. P. Morath, and P. T. Webster, J. Appl. Phys. vol 133, 104503 (2023)
+    Capacitance-voltage modeling of mid-wavelength infrared nBn detectors
+    https://doi.org/10.1063/5.0138468 
 
     Parameters
     ----------
@@ -278,9 +280,11 @@ def capacitance_nBnReturnPotential(const:inputs,vA, temp, dopeContact,  dopeBarr
     numerical modeling.  https://doi.org/10.1109/JEDS.2019.2913157
     
     
-    Future paper title and authors: 
-    Capacitance-voltage modeling of mid-wavelength barrier infrared detectors
-    R. A. Carrasco, A. Newell, Z. M. Alsaad, J. V. Logan, G. Ariyawansa, C. P. Morath, and P. T. Webster
+    Paper title and authors: 
+    R. A. Carrasco, A. T. Newell, Z. M. Alsaad, J. V. Logan, J. M. Duran,
+    G. Ariyawansa, B. Pinkie, C. P. Morath, and P. T. Webster, J. Appl. Phys. vol 133, 104503 (2023)
+    Capacitance-voltage modeling of mid-wavelength infrared nBn detectors
+    https://doi.org/10.1063/5.0138468 
     
 
     Parameters
