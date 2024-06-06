@@ -132,7 +132,144 @@ def differentiate(y,x):
     return dydx
 
 
+def determineCapacitance_nBp(const:inputs, vA, temp, dopeContact, dopeBarrier, thicBarrier,\
+                             dopeAbsorber, eC = 0, parasitic = 0, \
+                             epsBar = 12.795, epsAbs = 15.3056, epsCon = 15.3056, size = 800):
+    """
+    Determine the capacitance of an nBn with arbitrary doping densities on the barrier (n or p-type) as 
+    a function of applied voltage vA at a specified temperature temp. Inputs include doping in the Contact dopeContact,
+    barrier dopeBarrier, barrier thickness thicBarrier and doping in the absorber dopeAbsorber. The method is an extension
+    of Glasman's paper where the contact and absorber have similar electric field formalisms. A. Glasmann, I. Prigozhin, 
+    and E. Bellotti, IEEE J. electron Dev. Soc. vol. 7, 534 (2019)
+    Understanding the C-V characteristics of InAsSb-based nBn infrared detectors with n and p-type barrier layers through
+    numerical modeling.  https://doi.org/10.1109/JEDS.2019.2913157
 
+    Paper title and authors: 
+    R. A. Carrasco, A. T. Newell, Z. M. Alsaad, J. V. Logan, J. M. Duran,
+    G. Ariyawansa, B. Pinkie, C. P. Morath, and P. T. Webster, J. Appl. Phys. vol 133, 104503 (2023)
+    Capacitance-voltage modeling of mid-wavelength infrared nBn detectors
+    https://doi.org/10.1063/5.0138468 
+
+    Parameters
+    ----------
+    const: inputs object
+           an object that contains physical constants in fundamental SI units
+    vA : float Array size m x 1
+        Applied voltage (V)
+    temp : float
+        temperature (K)
+    eC : float    
+        conduction band offset (meV, or millivolts)
+    dopeContact : float
+        contact doping (1e17 cm-3)
+    dopeBarrier : float
+        barrier doping (1e15 cm-3)
+    thicBarrier : float
+        barrier thickness (nm)
+    dopeAbsorber : float
+        absorber doping (1e15 cm-3)
+    parasitic : float, optional, default 0
+        parasitic capacitance of the device (pF)
+    size : float, optional, default 800
+
+    Returns
+    -------
+    capacitance : float Array size m x 1
+        The calculated capacitance density of the device (nF/cm^2)
+
+    """
+
+    """Convert inputs to SI units"""
+    
+    nDAL = dopeAbsorber*1e15*100**3 #convert from 1e15 cm^(-3) to m^(-3)
+    
+    """For a p-type barrier, the barrier will be a negative value"""
+    nDBL = dopeBarrier*1e15*100**3 #convert from 1e15 cm^(-3) to m^(-3) 
+    
+    
+    nDCL = dopeContact*1e17*100**3 #convert from 1e17 cm^(-3) to m^(-3)
+    
+    thic = thicBarrier*1e-9 #convert from nm to m
+    
+  
+    
+    
+    bandOffeV = eC/1000 # change the band offset from meV to eV
+    
+    """Determine the built-in voltage between the absorber and contact"""
+    vbi = builtInVoltageAbsorberContact(const,temp, dopeContact*100, dopeAbsorber, bandOffeV)
+    
+
+    #initialize the absorber-barrier surface potential
+    val = np.nan*np.ones([np.size(vA)])
+    
+    """Calculate the electric permittivities from the relative permittivities"""
+    epsAL = epsAbs*const.e0
+    epsBL = epsBar*const.e0
+    epsCL = epsCon*const.e0
+        
+
+    
+    
+    """Define the electric field and charge in terms of doping and potential drops"""
+    
+    #Define an electric field at absorber barrier interface as a function of absorber potential
+    eFieldAbs = lambda dope, phi, eps:-np.sign(phi) * \
+        np.sqrt(2*const.kb*temp*dope/eps*(-1-const.e*phi/const.kb/temp + np.exp(const.e*phi/const.kb/temp)))
+        
+    #Calculate the charge on the contact as a function of contact potential  
+    chargep = lambda dope, phi, eps: np.sign(phi) * \
+         np.sqrt(2*const.kb*temp*dope*eps*(-1+const.e*phi/const.kb/temp + np.exp(-const.e*phi/const.kb/temp)))
+    
+    charge = lambda dope, phi, eps: -np.sign(phi) * \
+         np.sqrt(2*const.kb*temp*dope*eps*(-1-const.e*phi/const.kb/temp + np.exp(const.e*phi/const.kb/temp)))
+    
+    """Determine potential drop in absorber at each applied voltage"""
+    for index, vapplied in enumerate(vA):  
+        
+        # Select a wide enough range to determine the correct potential drop across the 
+        # absorber
+        negativeGuess = -np.sign(vapplied)*vapplied - 1
+        positiveEndpoint = np.sign(vapplied)*vapplied + 2
+        upperEndpoint = positiveEndpoint
+        
+        # Define a barrier potential based on the absorber potential
+        phiBL = lambda phAL: -thic**2 * const.e *nDBL / (2*epsBL) - thic * epsAL/epsBL*eFieldAbs(nDAL,phAL, epsAL)
+        
+        # Define a contact potential in terms of the absorber potential
+        phiCL = lambda apo: vapplied + vbi - phiBL(apo) - apo
+        
+        # Net charge that needs to be 0 at each applied voltage
+        funcToSolve = lambda phiabs: chargep(nDCL, phiCL(phiabs), epsCL) + const.e*nDBL*thic + epsAL*eFieldAbs(nDAL,phiabs, epsAL)
+            
+        # plt.figure()
+        # xlims = np.linspace(negativeGuess, positiveEndpoint, 1000)
+        # plt.plot(xlims, phiCL(xlims))
+        #Determine proper potential drop in the absorber for 0 net charge
+        val[index] = optimize.brenth(funcToSolve, negativeGuess, upperEndpoint)
+        
+
+    # Determine the charge for the absorber at each applied voltage
+    chargeAbs = charge(nDAL,val, epsAL)
+    
+    """Now determine the capacitance.
+    TO GET RESULTS SIMILAR TO THE MANUSCRIPT USE 
+    THIS METHOD UNCOMMENT THIS LINE"""
+    # capacitance = -centralDifference(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
+    
+    """ 02-13-2022 UPDATE: calculate the derivative by cubic spline interpolation and then
+    differentiate rather than calculating the numerical derivative by finite differences.
+    TO GET RESULTS SIMILAR TO THE MANUSCRIPT COMMENT THIS LINE AND UNCOMMENT THE PREVIOUS LINE"""
+    capacitance = -differentiate(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
+    
+    
+    
+    capnFCm2 = capacitance*1e9/100**2
+    return capnFCm2
+
+    
+    
+    
 
 def determineCapacitance_nBn(const: inputs, vA, temp, dopeContact,  dopeBarrier, thicBarrier,\
                                dopeAbsorber, eC = 0, parasitic = 0, \
