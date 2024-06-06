@@ -4,14 +4,18 @@ Created on Wed Jan 18 15:25:44 2023
 
 @author: rigoc
 """
+#%%
+import sys
+sys.path.append('C:\\Users\\rigoc\\Desktop\\KirtlandDocs\\AFRL_DATA\\APPS\\CustomLibraries')
+#%%
 import matplotlib.pyplot as plt
-import CapacitanceVoltageFit as cvf
+
 import numpy as np
 import pandas as pd
 import os
 from os.path import join
 
-
+import CapacitanceVoltageFit as cvf
 
 
 
