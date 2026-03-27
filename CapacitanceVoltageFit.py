@@ -7,7 +7,7 @@ Created on Wed Dec  1 10:09:52 2021
 import numpy as np #numerical py, so exponents, sine, cosine etc. functions
 from scipy import optimize #fitting and root finding function
 from scipy.interpolate import CubicSpline
-# import matplotlib.pyplot as plt #plotting library
+import matplotlib.pyplot as plt #plotting library
 
 class inputs:
     def __init__(self):
@@ -23,7 +23,35 @@ class inputs:
         self.kb   = 1.380649e-23 # J/K
          
     
-
+class device:
+    
+    def __init__(self,contactDoping, dopeBarrier, thicBarrier, dopeAbsorber, ec = 0,\
+                 parasitic = 0, epsBar = 12.795, epsAbs = 15.3056, epsCon = 15.3056, size = 800):
+        
+        self.contactDoping = contactDoping  # units of 1e17 cm(-3)
+        self.dopeBarrier  = dopeBarrier
+        self.thicBarrier = thicBarrier
+        self.dopeAbsorber = dopeAbsorber
+        self.ec = ec
+        self.parasitic = parasitic 
+        self.epsBar = epsBar
+        self.epsAbs = epsAbs
+        self.epsCon = epsCon
+        self.size = size
+        self.deviceInfo = [contactDoping, dopeBarrier, thicBarrier, dopeAbsorber, ec,\
+                           parasitic, epsBar, epsAbs, epsCon, size]
+            
+    def printDeviceInfo(self):
+        print("Contact Doping:", self.contactDoping, "e17 cm^-3")
+        print("Barrier Doping (Nd-Na):", self.dopeBarrier, "e15 cm^-3")
+        print("Barrier Thickness:", self.thicBarrier, "nm")
+        print("Absorber doping:", self.dopeAbsorber, "e15 cm^-3")
+        print("Contact-absorber conduction band offset:", self.ec, "meV")
+        print("Parasitic Capacitance", self.parasitic, "pF")
+        print("Barrier relative permittivity", self.epsBar)
+        print("Absorber relative permittivity", self.epsAbs)
+        print("Contact relative permittivity", self.epsCon)
+        print("Device side-length", self.size, "um")
 
 def chargeAbs(const: inputs,temp, doping, phi, epsin = 15.3):
     
@@ -365,26 +393,51 @@ def determineCapacitance_nBn(const: inputs, vA, temp, dopeContact,  dopeBarrier,
     """Determine potential drop in absorber at each applied voltage"""
     for index, vapplied in enumerate(vA):  
         
+        
+        
+        
         # Select a wide enough range to determine the correct potential drop across the 
         # absorber
-        negativeGuess = -np.sign(vapplied)*vapplied - 1
-        positiveEndpoint = np.sign(vapplied)*vapplied + 1
+        
+        # if vapplied < 0 and index > 1
+        negativeGuess = -np.sign(vapplied)*vapplied -0.1
+        
+        
+            
+        positiveEndpoint = np.sign(vapplied)*vapplied + 0.1
+        # positiveEndpoint = 1
         upperEndpoint = positiveEndpoint
+        
+        
         
         # Define a barrier potential based on the absorber potential
         phiBL = lambda phAL: -thic**2 * const.e *nDBL / (2*epsBL) - thic * epsAL/epsBL*eFieldAbs(nDAL,phAL, epsAL)
         
         # Define a contact potential in terms of the absorber potential
         phiCL = lambda apo: vapplied + vbi - phiBL(apo) - apo
-            
+        
+        
         # Net charge that needs to be 0 at each applied voltage
         funcToSolve = lambda phiabs: charge(nDCL, -phiCL(phiabs), epsCL) + const.e*nDBL*thic + epsAL*eFieldAbs(nDAL,phiabs, epsAL)
-            
+    
+        # print(index, vapplied,dopeAbsorber, negativeGuess, upperEndpoint)
         
-        #Determine proper potential drop in the absorber for 0 net charge
-        val[index] = optimize.brenth(funcToSolve, negativeGuess, upperEndpoint)
-        
-
+        # plt.figure()
+        # endpoints = np.linspace(negativeGuess, upperEndpoint,100)
+        # plt.plot(endpoints, funcToSolve(endpoints))
+        # print(vapplied, negativeGuess, upperEndpoint)
+        # print(vapplied, negativeGuess, upperEndpoint)
+        try:
+            #Determine proper potential drop in the absorber for 0 net charge
+            val[index] = optimize.brenth(funcToSolve, negativeGuess, upperEndpoint)
+        except ValueError:
+            # print("Value Error, Trying positive guess to be 0.1")
+            try: 
+                val[index] = optimize.brenth(funcToSolve, negativeGuess, 0.1)
+            except ValueError:
+                # print("Value Error, Trying one more time--> positive guess +0.1") 
+                val[index] = optimize.brenth(funcToSolve, -0.0, upperEndpoint)
+                
     # Determine the charge for the absorber at each applied voltage
     chargeAbs = charge(nDAL,val, epsAL)
     
@@ -398,9 +451,11 @@ def determineCapacitance_nBn(const: inputs, vA, temp, dopeContact,  dopeBarrier,
     TO GET RESULTS SIMILAR TO THE MANUSCRIPT COMMENT THIS LINE AND UNCOMMENT THE PREVIOUS LINE"""
     capacitance = -differentiate(chargeAbs,vA) + parasitic*1e-12/(size*1e-6)**2
     
-    
+   
     
     capnFCm2 = capacitance*1e9/100**2
+    # plt.figure()
+    # plt.plot(vA, capnFCm2)
     return capnFCm2
 
 
@@ -506,7 +561,8 @@ def capacitance_nBnReturnPotential(const:inputs,vA, temp, dopeContact,  dopeBarr
         # Select a wide enough range to determine the correct potential drop across the 
         # absorber
         negativeGuess = -np.sign(vapplied)*vapplied - 1
-        positiveEndpoint = np.sign(vapplied)*vapplied + 1
+        # positiveEndpoint = np.sign(vapplied)*vapplied + 1
+        positiveEndpoint = 1
         upperEndpoint = positiveEndpoint
         
         # Define a barrier potential based on the absorber potential
@@ -543,6 +599,8 @@ def capacitance_nBnReturnPotential(const:inputs,vA, temp, dopeContact,  dopeBarr
 
     
     return capnFCm2, val, phiBarrier, phiContact, vbi
+
+
 
 
 def fitCapacitance_nBn(const:inputs, xdata, ydata, temp, dopeContact, dopeBarrier, thicBarrier, dopeAbsorber,\
@@ -792,9 +850,63 @@ def fitCapacitance_nBn(const:inputs, xdata, ydata, temp, dopeContact, dopeBarrie
     """provide the best fit, covariance, and all of the model parameter inputs to determine the capacitance"""
     return bestFit, covariance, finalOutput
 
+
+
+
+    
+def calculateCapturedFromEmission(const: inputs, filTimes, temp,  capture, dopingTrapRatio, trapEnergy, dopingConcentration, \
+    bandGapAtT, dropQuiescient, dropPulse, epsAbs):
+    """
+    
+
+    Parameters
+    ----------
+    const : inputs
+        DESCRIPTION.
+    filTimes : float array
+        pulse filling times  (seconds)
+    temp : float
+        temperature at which pulse study was performed (Kelvin)
+    capture : float
+        capture time (seconds)
+    dopingTrapRatio : Float
+        NT/ND (unitless)
+    trapEnergy : Float
+        trap energy relative to the valence band (eV)
+    dopingConcentration : Float
+        doping concentration of the device in units of 1e15 cm^-3
+    bandGapAtT :Float
+        Bandgap at the temperature provided by temp (Ec - Ev) (eV)
+    dropQuiescient : Float
+        Potential drop across the absorber for the quiescent bias applied calculated from the best fit to the CV curve
+    dropPulse : Float
+        Potential drop across the absorber for the pulse bias applied calculated from the best fit to the CV curve
+    epsAbs : epsAbs
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    
+    doping = dopingConcentration*1e15*100**3 # in m-3
+    
+    nc = 2*(2*np.pi*0.026*const.m0*const.kb*temp/const.h**2)**(3/2) # in m-3
+    relativeFermi = bandGapAtT - const.kb/const.e*temp*np.log(nc/(doping))
+    
+    """Calculate the difference in the fermi """
+    lambdaDepth = np.sqrt(2*const.e0*epsAbs*(relativeFermi - trapEnergy)/const.e/(doping)) # in meters
     
     
     
+    
+    
+    
+    return 
+        
+
+
 
 
 def calculateAlGaAsSbBandGap(comp, temp):
